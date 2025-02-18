@@ -1,1 +1,1 @@
-# Nonstatic
+https://rumelikyan.github.io/Nonstatic/
