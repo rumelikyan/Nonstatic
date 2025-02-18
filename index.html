@@ -13,8 +13,10 @@
       position: absolute;
       background-color: white;
       border: 1px solid black;
-      padding: 5px;
+      padding: 8px;
+      font-size: 12px;
       pointer-events: none;
+      display: none;
     }
     .legend rect { stroke: black; stroke-width: 1px; }
     .controls {
@@ -28,7 +30,7 @@
   <div class="controls">
     <label for="dataType">Select Data Type:</label>
     <select id="dataType">
-      <option value="activity">Activity</option>
+      <option value="activity">Cumulative Activity</option>
       <option value="temperature">Temperature</option>
     </select>
     
@@ -38,6 +40,7 @@
     <button id="bothBtn">Both</button>
   </div>
 
+  <div class="tooltip" id="tooltip"></div>
   <svg></svg>
 
   <script>
@@ -51,6 +54,8 @@
                 .append("g")
                   .attr("transform", `translate(${margin.left},${margin.top})`);
 
+    const tooltip = d3.select("#tooltip");
+
     const files = {
       activity: ["Fem Act.csv", "Male Act.csv"],
       temperature: ["Fem Temp.csv", "Male Temp.csv"]
@@ -61,10 +66,27 @@
 
     function loadData(type) {
       Promise.all(files[type].map(file => d3.csv(file))).then(datasets => {
-        const [femData, maleData] = datasets;
+        let [femData, maleData] = datasets;
 
-        femData.forEach((d, i) => { d.time = i; d.value = +d[Object.keys(d)[0]]; });
-        maleData.forEach((d, i) => { d.time = i; d.value = +d[Object.keys(d)[0]]; });
+        femData.forEach((d, i) => { 
+          d.time = i; 
+          d.rawValue = +d[Object.keys(d)[0]]; // Store raw value
+        });
+
+        maleData.forEach((d, i) => { 
+          d.time = i; 
+          d.rawValue = +d[Object.keys(d)[0]];
+        });
+
+        if (type === "activity") {
+          // Compute cumulative sum for plotting while keeping raw values for tooltip
+          femData.reduce((acc, d) => (d.value = acc + d.rawValue, acc + d.rawValue), 0);
+          maleData.reduce((acc, d) => (d.value = acc + d.rawValue, acc + d.rawValue), 0);
+        } else {
+          // Temperature should remain raw
+          femData.forEach(d => d.value = d.rawValue);
+          maleData.forEach(d => d.value = d.rawValue);
+        }
 
         renderGraph(femData, maleData, type, currentSelection);
       }).catch(error => console.error('Error loading CSV files:', error));
@@ -83,24 +105,59 @@
 
       svg.append("g").call(d3.axisLeft(y));
 
-      const line = d3.line().x(d => x(d.time)).y(d => y(d.value));
+      const line = d3.line()
+        .x(d => x(d.time))
+        .y(d => y(d.value));
 
-      if (selection === "female" || selection === "both") {
-        svg.append("path")
-          .datum(femData)
+      function addLine(data, color) {
+        const path = svg.append("path")
+          .datum(data)
           .attr("fill", "none")
-          .attr("stroke", "red")
+          .attr("stroke", color)
           .attr("stroke-width", 2)
           .attr("d", line);
+
+        const dots = svg.selectAll(`.dot-${color}`)
+          .data(data)
+          .enter().append("circle")
+          .attr("class", `dot-${color}`)
+          .attr("cx", d => x(d.time))
+          .attr("cy", d => y(d.value))
+          .attr("r", 3)
+          .attr("fill", color)
+          .style("opacity", 0)
+          .on("mouseover", function(event, d) {
+            const day = Math.floor(d.time / 1440) + 1;
+            const minutes = d.time % 1440;
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            const formattedTime = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+
+            tooltip.style("display", "block")
+              .html(`<strong>Day:</strong> ${day}<br><strong>Time:</strong> ${formattedTime}<br><strong>${type === "activity" ? "Activity" : "Temperature"}:</strong> ${d.rawValue}`)
+              .style("left", (event.pageX + 10) + "px")
+              .style("top", (event.pageY - 10) + "px");
+          })
+          .on("mousemove", function(event) {
+            tooltip.style("left", (event.pageX + 10) + "px")
+                   .style("top", (event.pageY - 10) + "px");
+          })
+          .on("mouseout", function() {
+            tooltip.style("display", "none");
+          });
+
+        path.on("mouseover", function() {
+          dots.transition().duration(200).style("opacity", 1);
+        }).on("mouseout", function() {
+          dots.transition().duration(200).style("opacity", 0);
+        });
       }
 
+      if (selection === "female" || selection === "both") {
+        addLine(femData, "red");
+      }
       if (selection === "male" || selection === "both") {
-        svg.append("path")
-          .datum(maleData)
-          .attr("fill", "none")
-          .attr("stroke", "blue")
-          .attr("stroke-width", 2)
-          .attr("d", line);
+        addLine(maleData, "blue");
       }
 
       svg.append("text")
@@ -109,7 +166,7 @@
         .attr("text-anchor", "middle")
         .style("font-size", "16px")
         .style("font-weight", "bold")
-        .text(`Mouse ${type.charAt(0).toUpperCase() + type.slice(1)} over 14 Days`);
+        .text(`Mouse ${type === "activity" ? "Cumulative Activity" : "Temperature"} over 14 Days`);
     }
 
     d3.select("#dataType").on("change", function() {
