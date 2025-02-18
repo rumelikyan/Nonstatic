@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mouse Activity and Temperature over 14 Days</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    svg { width: 100%; height: 600px; }
+    .axis-label { font-size: 14px; font-weight: bold; }
+    .tooltip {
+      position: absolute;
+      background-color: white;
+      border: 1px solid black;
+      padding: 5px;
+      pointer-events: none;
+    }
+    .legend rect { stroke: black; stroke-width: 1px; }
+  </style>
+</head>
+<body>
+  <h2>Mouse Activity and Temperature over 14 Days</h2>
+  <label for="dataType">Select Data Type:</label>
+  <select id="dataType">
+    <option value="activity">Activity</option>
+    <option value="temperature">Temperature</option>
+  </select>
+  <svg></svg>
+
+  <script>
+    const margin = { top: 50, right: 60, bottom: 50, left: 60 },
+          width = 960 - margin.left - margin.right,
+          height = 500 - margin.top - margin.bottom;
+
+    const svg = d3.select("svg")
+                  .attr("width", width + margin.left + margin.right)
+                  .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                  .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const files = {
+      activity: ["Fem Act.csv", "Male Act.csv"],
+      temperature: ["Fem Temp.csv", "Male Temp.csv"]
+    };
+
+    let currentType = 'activity';
+
+    function loadData(type) {
+      Promise.all(files[type].map(file => d3.csv(file))).then(datasets => {
+        const [femData, maleData] = datasets;
+
+        femData.forEach((d, i) => { d.time = i; d.value = +d[Object.keys(d)[0]]; });
+        maleData.forEach((d, i) => { d.time = i; d.value = +d[Object.keys(d)[0]]; });
+
+        renderGraph(femData, maleData, type);
+      }).catch(error => console.error('Error loading CSV files:', error));
+    }
+
+    function renderGraph(femData, maleData, type) {
+      svg.selectAll("*").remove();
+
+      const x = d3.scaleLinear().domain([0, femData.length]).range([0, width]);
+      const y = d3.scaleLinear().domain([d3.min([...femData, ...maleData], d => d.value), d3.max([...femData, ...maleData], d => d.value)]).range([height, 0]);
+
+      svg.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x).ticks(14).tickFormat(d => `Day ${Math.floor(d/1440)+1}`));
+      svg.append("g").call(d3.axisLeft(y));
+
+      const line = d3.line().x(d => x(d.time)).y(d => y(d.value));
+
+      svg.append("path").datum(femData).attr("fill", "none").attr("stroke", "red").attr("stroke-width", 2).attr("d", line);
+      svg.append("path").datum(maleData).attr("fill", "none").attr("stroke", "blue").attr("stroke-width", 2).attr("d", line);
+
+      svg.append("text").attr("x", width/2).attr("y", -20).attr("text-anchor", "middle").style("font-size", "16px").style("font-weight", "bold").text(`Mouse ${type.charAt(0).toUpperCase() + type.slice(1)} over 14 Days`);
+    }
+
+    loadData(currentType);
+    d3.select("#dataType").on("change", function() { currentType = this.value; loadData(currentType); });
+  </script>
+</body>
+</html>
