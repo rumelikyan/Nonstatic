@@ -1,28 +1,11 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mouse Activity and Temperature over 14 Days</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; }
-    svg { width: 100%; height: 600px; }
-    .axis-label { font-size: 14px; font-weight: bold; }
-    .tooltip {
-      position: absolute;
-      background-color: white;
-      border: 1px solid black;
-      padding: 8px;
-      font-size: 12px;
-      pointer-events: none;
-      display: none;
-    }
-    .legend rect { stroke: black; stroke-width: 1px; }
-    .controls {
-      margin-bottom: 10px;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <h2>Mouse Activity and Temperature over 14 Days</h2>
@@ -35,13 +18,28 @@
     </select>
     
     <label>Select Data:</label>
-    <button id="maleBtn">Male</button>
-    <button id="femaleBtn">Female</button>
-    <button id="bothBtn">Both</button>
+    <button id="maleBtn" class="button male-btn">Male</button>
+    <button id="femaleBtn" class="button female-btn">Female</button>
+    <button id="bothBtn" class="button both-btn">Both</button>
   </div>
 
   <div class="tooltip" id="tooltip"></div>
   <svg></svg>
+
+  <div class="legend">
+    <svg width="200" height="50">
+      <rect x="10" y="10" width="20" height="10" fill="red"></rect>
+      <text x="35" y="20">Female</text>
+      <rect x="10" y="30" width="20" height="10" fill="blue"></rect>
+      <text x="35" y="40">Male</text>
+    </svg>
+  </div>
+
+  <!-- Hover Information Box (Top Right) -->
+  <div class="info-box">
+    <h3>Data Point Info:</h3>
+    <p id="info-text">Hover over the graph to see details.</p>
+  </div>
 
   <script>
     const margin = { top: 50, right: 60, bottom: 50, left: 60 },
@@ -55,6 +53,7 @@
                   .attr("transform", `translate(${margin.left},${margin.top})`);
 
     const tooltip = d3.select("#tooltip");
+    const infoText = d3.select("#info-text"); // Selecting the hover info box
 
     const files = {
       activity: ["Fem Act.csv", "Male Act.csv"],
@@ -62,7 +61,7 @@
     };
 
     let currentType = 'activity';
-    let currentSelection = "both"; // Default: show both male and female data
+    let currentSelection = "both";
 
     function loadData(type) {
       Promise.all(files[type].map(file => d3.csv(file))).then(datasets => {
@@ -70,20 +69,17 @@
 
         femData.forEach((d, i) => { 
           d.time = i; 
-          d.rawValue = +d[Object.keys(d)[0]]; // Store raw value
+          d.rawValue = +d[Object.keys(d)[0]];
         });
-
         maleData.forEach((d, i) => { 
           d.time = i; 
           d.rawValue = +d[Object.keys(d)[0]];
         });
 
         if (type === "activity") {
-          // Compute cumulative sum for plotting while keeping raw values for tooltip
           femData.reduce((acc, d) => (d.value = acc + d.rawValue, acc + d.rawValue), 0);
           maleData.reduce((acc, d) => (d.value = acc + d.rawValue, acc + d.rawValue), 0);
         } else {
-          // Temperature should remain raw
           femData.forEach(d => d.value = d.rawValue);
           maleData.forEach(d => d.value = d.rawValue);
         }
@@ -100,14 +96,11 @@
                   .domain([d3.min([...femData, ...maleData], d => d.value), d3.max([...femData, ...maleData], d => d.value)])
                   .range([height, 0]);
 
-      svg.append("g").attr("transform", `translate(0,${height})`)
-         .call(d3.axisBottom(x).ticks(14).tickFormat(d => `Day ${Math.floor(d/1440)+1}`));
+      svg.append("g")
+         .attr("transform", `translate(0,${height})`)
+         .call(d3.axisBottom(x).ticks(14).tickFormat(d => `Day ${Math.floor(d/1440) + 1}`));
 
       svg.append("g").call(d3.axisLeft(y));
-
-      const line = d3.line()
-        .x(d => x(d.time))
-        .y(d => y(d.value));
 
       function addLine(data, color) {
         const path = svg.append("path")
@@ -115,7 +108,7 @@
           .attr("fill", "none")
           .attr("stroke", color)
           .attr("stroke-width", 2)
-          .attr("d", line);
+          .attr("d", d3.line().x(d => x(d.time)).y(d => y(d.value)));
 
         const dots = svg.selectAll(`.dot-${color}`)
           .data(data)
@@ -133,10 +126,13 @@
             const mins = minutes % 60;
             const formattedTime = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
 
+            const info = `Day: ${day}, Time: ${formattedTime}, ${type === "activity" ? "Activity" : "Temperature"}: ${d.rawValue}`;
             tooltip.style("display", "block")
-              .html(`<strong>Day:</strong> ${day}<br><strong>Time:</strong> ${formattedTime}<br><strong>${type === "activity" ? "Activity" : "Temperature"}:</strong> ${d.rawValue}`)
+              .html(info)
               .style("left", (event.pageX + 10) + "px")
               .style("top", (event.pageY - 10) + "px");
+
+            infoText.text(info); // Update the info box
           })
           .on("mousemove", function(event) {
             tooltip.style("left", (event.pageX + 10) + "px")
@@ -144,6 +140,7 @@
           })
           .on("mouseout", function() {
             tooltip.style("display", "none");
+            infoText.text("Hover over the graph to see details."); // Reset text
           });
 
         path.on("mouseover", function() {
@@ -159,14 +156,6 @@
       if (selection === "male" || selection === "both") {
         addLine(maleData, "blue");
       }
-
-      svg.append("text")
-        .attr("x", width/2)
-        .attr("y", -20)
-        .attr("text-anchor", "middle")
-        .style("font-size", "16px")
-        .style("font-weight", "bold")
-        .text(`Mouse ${type === "activity" ? "Cumulative Activity" : "Temperature"} over 14 Days`);
     }
 
     d3.select("#dataType").on("change", function() {
@@ -174,20 +163,9 @@
       loadData(currentType);
     });
 
-    d3.select("#maleBtn").on("click", function() {
-      currentSelection = "male";
-      loadData(currentType);
-    });
-
-    d3.select("#femaleBtn").on("click", function() {
-      currentSelection = "female";
-      loadData(currentType);
-    });
-
-    d3.select("#bothBtn").on("click", function() {
-      currentSelection = "both";
-      loadData(currentType);
-    });
+    d3.select("#maleBtn").on("click", () => { currentSelection = "male"; loadData(currentType); });
+    d3.select("#femaleBtn").on("click", () => { currentSelection = "female"; loadData(currentType); });
+    d3.select("#bothBtn").on("click", () => { currentSelection = "both"; loadData(currentType); });
 
     loadData(currentType);
   </script>
