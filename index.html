@@ -17,15 +17,27 @@
       pointer-events: none;
     }
     .legend rect { stroke: black; stroke-width: 1px; }
+    .controls {
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
   <h2>Mouse Activity and Temperature over 14 Days</h2>
-  <label for="dataType">Select Data Type:</label>
-  <select id="dataType">
-    <option value="activity">Activity</option>
-    <option value="temperature">Temperature</option>
-  </select>
+  
+  <div class="controls">
+    <label for="dataType">Select Data Type:</label>
+    <select id="dataType">
+      <option value="activity">Activity</option>
+      <option value="temperature">Temperature</option>
+    </select>
+    
+    <label>Select Data:</label>
+    <button id="maleBtn">Male</button>
+    <button id="femaleBtn">Female</button>
+    <button id="bothBtn">Both</button>
+  </div>
+
   <svg></svg>
 
   <script>
@@ -45,6 +57,7 @@
     };
 
     let currentType = 'activity';
+    let currentSelection = "both"; // Default: show both male and female data
 
     function loadData(type) {
       Promise.all(files[type].map(file => d3.csv(file))).then(datasets => {
@@ -53,29 +66,73 @@
         femData.forEach((d, i) => { d.time = i; d.value = +d[Object.keys(d)[0]]; });
         maleData.forEach((d, i) => { d.time = i; d.value = +d[Object.keys(d)[0]]; });
 
-        renderGraph(femData, maleData, type);
+        renderGraph(femData, maleData, type, currentSelection);
       }).catch(error => console.error('Error loading CSV files:', error));
     }
 
-    function renderGraph(femData, maleData, type) {
+    function renderGraph(femData, maleData, type, selection) {
       svg.selectAll("*").remove();
 
       const x = d3.scaleLinear().domain([0, femData.length]).range([0, width]);
-      const y = d3.scaleLinear().domain([d3.min([...femData, ...maleData], d => d.value), d3.max([...femData, ...maleData], d => d.value)]).range([height, 0]);
+      const y = d3.scaleLinear()
+                  .domain([d3.min([...femData, ...maleData], d => d.value), d3.max([...femData, ...maleData], d => d.value)])
+                  .range([height, 0]);
 
-      svg.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x).ticks(14).tickFormat(d => `Day ${Math.floor(d/1440)+1}`));
+      svg.append("g").attr("transform", `translate(0,${height})`)
+         .call(d3.axisBottom(x).ticks(14).tickFormat(d => `Day ${Math.floor(d/1440)+1}`));
+
       svg.append("g").call(d3.axisLeft(y));
 
       const line = d3.line().x(d => x(d.time)).y(d => y(d.value));
 
-      svg.append("path").datum(femData).attr("fill", "none").attr("stroke", "red").attr("stroke-width", 2).attr("d", line);
-      svg.append("path").datum(maleData).attr("fill", "none").attr("stroke", "blue").attr("stroke-width", 2).attr("d", line);
+      if (selection === "female" || selection === "both") {
+        svg.append("path")
+          .datum(femData)
+          .attr("fill", "none")
+          .attr("stroke", "red")
+          .attr("stroke-width", 2)
+          .attr("d", line);
+      }
 
-      svg.append("text").attr("x", width/2).attr("y", -20).attr("text-anchor", "middle").style("font-size", "16px").style("font-weight", "bold").text(`Mouse ${type.charAt(0).toUpperCase() + type.slice(1)} over 14 Days`);
+      if (selection === "male" || selection === "both") {
+        svg.append("path")
+          .datum(maleData)
+          .attr("fill", "none")
+          .attr("stroke", "blue")
+          .attr("stroke-width", 2)
+          .attr("d", line);
+      }
+
+      svg.append("text")
+        .attr("x", width/2)
+        .attr("y", -20)
+        .attr("text-anchor", "middle")
+        .style("font-size", "16px")
+        .style("font-weight", "bold")
+        .text(`Mouse ${type.charAt(0).toUpperCase() + type.slice(1)} over 14 Days`);
     }
 
+    d3.select("#dataType").on("change", function() {
+      currentType = this.value;
+      loadData(currentType);
+    });
+
+    d3.select("#maleBtn").on("click", function() {
+      currentSelection = "male";
+      loadData(currentType);
+    });
+
+    d3.select("#femaleBtn").on("click", function() {
+      currentSelection = "female";
+      loadData(currentType);
+    });
+
+    d3.select("#bothBtn").on("click", function() {
+      currentSelection = "both";
+      loadData(currentType);
+    });
+
     loadData(currentType);
-    d3.select("#dataType").on("change", function() { currentType = this.value; loadData(currentType); });
   </script>
 </body>
 </html>
