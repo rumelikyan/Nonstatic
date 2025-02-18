@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mouse Activity and Temperature over 14 Days</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
+  <link rel="stylesheet" href="style.css">
   <style>
     body { font-family: Arial, sans-serif; }
     svg { width: 100%; height: 600px; }
@@ -42,6 +43,15 @@
 
   <div class="tooltip" id="tooltip"></div>
   <svg></svg>
+  <div class="legend">
+    <div class="legend-item">
+        <div class="legend-box female"></div> Female Data (Red)
+    </div>
+    <div class="legend-item">
+        <div class="legend-box male"></div> Male Data (Blue)
+    </div>
+</div>
+
 
   <script>
     const margin = { top: 50, right: 60, bottom: 50, left: 60 },
