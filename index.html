@@ -42,7 +42,7 @@
   </div>
 
   <script>
-    const margin = { top: 50, right: 60, bottom: 50, left: 60 },
+    const margin = { top: 50, right: 60, bottom: 60, left: 80 }, // Adjusted margins for labels
           width = 960 - margin.left - margin.right,
           height = 500 - margin.top - margin.bottom;
 
@@ -102,12 +102,31 @@
 
       svg.append("g").call(d3.axisLeft(y));
 
+      // X-axis Label
+      svg.append("text")
+         .attr("x", width / 2)
+         .attr("y", height + 50)
+         .attr("text-anchor", "middle")
+         .style("font-size", "14px")
+         .text("Time (Days)");
+
+      // Y-axis Label
+      svg.append("text")
+         .attr("transform", "rotate(-90)")
+         .attr("x", -height / 2)
+         .attr("y", -60)
+         .attr("text-anchor", "middle")
+         .style("font-size", "14px")
+         .text(type === "activity" ? "Cumulative Activity Level" : "Temperature (°C)");
+
       function addLine(data, color) {
+        const isTemperature = currentType === "temperature"; // Check if it's temperature mode
+
         const path = svg.append("path")
           .datum(data)
           .attr("fill", "none")
           .attr("stroke", color)
-          .attr("stroke-width", 2)
+          .attr("stroke-width", isTemperature ? 1 : 2) // Thinner lines for temperature
           .attr("d", d3.line().x(d => x(d.time)).y(d => y(d.value)));
 
         const dots = svg.selectAll(`.dot-${color}`)
@@ -142,12 +161,6 @@
             tooltip.style("display", "none");
             infoText.text("Hover over the graph to see details."); // Reset text
           });
-
-        path.on("mouseover", function() {
-          dots.transition().duration(200).style("opacity", 1);
-        }).on("mouseout", function() {
-          dots.transition().duration(200).style("opacity", 0);
-        });
       }
 
       if (selection === "female" || selection === "both") {
