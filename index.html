@@ -25,7 +25,6 @@
 
   <div class="tooltip" id="tooltip"></div>
   <svg></svg>
-
   <div class="legend">
     <svg width="200" height="50">
       <rect x="10" y="10" width="20" height="10" fill="red"></rect>
@@ -34,6 +33,59 @@
       <text x="35" y="40">Male</text>
     </svg>
   </div>
+  <div class="writeup">
+    <h2>Design Rationale</h2>
+    <p>
+      For this interactive visualization, we wanted to make it easy to explore patterns in mouse activity and temperature over 14 days. A line chart was the best choice because it clearly shows changes over time, making trends easy to spot. We used color coding—red for female and blue for male—to help differentiate between the two groups. To make the visualization more interactive, we added a tooltip that appears when users hover over a data point, showing details like the exact day, time, and recorded value. We also included a legend for clarity and a dropdown menu to switch between activity and temperature data.
+    </p>
+  
+    <p>
+      At first, we considered different approaches, like a circadian rhythm plot that would emphasize activity cycles based on time of day rather than a straight timeline. But that made it harder to compare trends across the full two-week period. Scatter plots were another option, but they didn’t show progression over time as clearly as a line chart. In the end, we focused on a design that keeps things simple while still letting users explore meaningful patterns in the data.
+    </p>
+  
+    <h2>Development Process</h2>
+    <p>
+      We started by structuring and cleaning the dataset, making sure the CSV files were formatted correctly and that the data loaded properly in D3.js. Once that was set, we built the visualization by setting up the axes, scales, and line paths to display the data. Adding the tooltip took some extra work to make sure it updated dynamically without being too distracting.
+    </p>
+  
+    <p>
+      One of the trickiest parts was making sure the interactions worked smoothly, especially when switching between datasets for activity and temperature. At one point, we considered adding zooming and filtering options, but after testing, we found that a simple toggle between male and female data made for a more intuitive experience.
+    </p>
+  
+    <h2>Future Improvements and Team Contributions</h2>
+    <p>
+      We split the work evenly across the team, meeting up multiple times over the last two weeks to check in and make progress. When working separately, we kept each other updated through text messages and GitHub pushes so everyone stayed on the same page.
+    </p>
+  
+    <p>
+      For future improvements, we could add zooming so users can focus on specific days or time periods more easily. Another idea is to include environmental factors like light exposure or humidity to see how they impact mouse activity and temperature. We could also add automatic annotations to highlight unusual trends or spikes in the data.
+    </p>
+  
+    <p>
+      Overall, this project showed how interactive visualizations can make complex data easier to explore and understand. Using D3.js, we built a functional and user-friendly tool that lets users engage with the data in a meaningful way.
+    </p>
+  </div>
+  
+  <style>
+    .writeup {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+      text-align: left;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+    .writeup h2 {
+      color: #333;
+      margin-top: 20px;
+    }
+  </style>
+  
+
+  
 
   <!-- Hover Information Box (Top Right) -->
   <div class="info-box">
@@ -75,7 +127,7 @@
           d.time = i; 
           d.rawValue = +d[Object.keys(d)[0]];
         });
-
+ 
         if (type === "activity") {
           femData.reduce((acc, d) => (d.value = acc + d.rawValue, acc + d.rawValue), 0);
           maleData.reduce((acc, d) => (d.value = acc + d.rawValue, acc + d.rawValue), 0);
